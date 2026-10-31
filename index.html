@@ -3,231 +3,682 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#000000" />
-  <title>야간 투시 (Night Vision)</title>
+  <meta name="theme-color" content="#050807" />
+  <title>ARGON OPTICS · 야간 투시 시스템</title>
   <style>
+    :root {
+      --bg-deep: #050709;
+      --bg-glass: rgba(10, 15, 20, 0.72);
+      --bg-glass-heavy: rgba(8, 12, 16, 0.88);
+      --border-subtle: rgba(0, 255, 136, 0.18);
+      --border-neutral: rgba(255, 255, 255, 0.10);
+      --accent: #00ff88;
+      --accent-dim: rgba(0, 255, 136, 0.15);
+      --accent-glow: 0 0 16px rgba(0, 255, 136, 0.35);
+      --danger: #ff3b5c;
+      --warn: #ffb800;
+      --text-main: #f0f6f4;
+      --text-muted: #7e918b;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; height: 100%;
-      background: #000; color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: var(--bg-deep); color: var(--text-main);
+      font-family: var(--font-sans);
       overflow: hidden;
       user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
       overscroll-behavior: none;
     }
+
     #app {
       position: relative;
       width: 100vw; height: 100vh; height: 100dvh;
       display: flex; flex-direction: column;
+      background: #000;
     }
-    .tabs {
-      display: flex; width: 100%;
-      background: rgba(0,0,0,0.65);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-      z-index: 10;
+
+    /* ============ TOP HEADER & TELEMETRY BAR ============ */
+    .top-bar {
+      position: relative;
+      z-index: 20;
+      background: linear-gradient(180deg, rgba(5,8,11,0.92) 0%, rgba(5,8,11,0.65) 100%);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-neutral);
       padding-top: env(safe-area-inset-top);
     }
+
+    .brand-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px 6px;
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .brand-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulseDot 2.4s infinite ease-in-out;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+
+    .brand-title {
+      font-family: var(--font-mono);
+      font-size: 13px; font-weight: 800;
+      letter-spacing: 1.5px; color: var(--text-main);
+    }
+
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 10px; color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--border-subtle);
+      padding: 1px 6px; border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .telemetry-pills {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-mono); font-size: 11px;
+    }
+
+    .pill {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border-neutral);
+      padding: 3px 7px; border-radius: 5px;
+      color: #b8ccc5;
+      font-variant-numeric: tabular-nums;
+    }
+    .pill strong { color: var(--accent); font-weight: 700; }
+
+    /* Mode Navigation Tabs */
+    .tabs {
+      display: flex; width: 100%;
+      padding: 0 10px;
+      gap: 4px;
+    }
+
     .tab {
-      flex: 1; padding: 14px 4px;
-      background: transparent; color: #889;
-      border: none; font-size: 14px; font-weight: 600;
+      flex: 1; padding: 10px 4px;
+      background: transparent; color: var(--text-muted);
+      border: none; font-size: 13px; font-weight: 600;
       cursor: pointer;
       border-bottom: 2px solid transparent;
-      transition: color .15s, border-color .15s;
+      transition: color .18s, border-color .18s, background .18s;
       -webkit-tap-highlight-color: transparent;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .tab.active { color: #00ff88; border-bottom-color: #00ff88; }
+    .tab:hover { color: #d0e2dc; }
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-code {
+      font-family: var(--font-mono);
+      font-size: 10px; opacity: 0.65;
+    }
+
+    /* ============ MAIN VIEWPORT STAGE ============ */
     .stage {
       position: relative; flex: 1; width: 100%;
       overflow: hidden; background: #000;
     }
-    video, canvas {
+
+    video, canvas#canvas {
       position: absolute; top: 0; left: 0;
       width: 100%; height: 100%;
     }
-    video { visibility: hidden; }
-    canvas { z-index: 2; display: block; }
-    .controls {
-      position: absolute; left: 0; right: 0; bottom: 0;
-      z-index: 5;
-      padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
-      display: flex; flex-direction: column; align-items: center; gap: 14px;
+    video { visibility: hidden; pointer-events: none; }
+    canvas#canvas { z-index: 2; display: block; }
+
+    /* Mini Histogram & Quick Actions Overlay (Top Left & Right inside Stage) */
+    .hud-top-overlay {
+      position: absolute;
+      top: 12px; left: 12px; right: 12px;
+      z-index: 8;
+      display: flex; align-items: flex-start; justify-content: space-between;
       pointer-events: none;
     }
-    .shutter {
+
+    .hist-box {
       pointer-events: auto;
-      width: 72px; height: 72px; border-radius: 50%;
-      border: 4px solid #fff; background: #ff3b3b;
+      background: var(--bg-glass);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border-neutral);
+      border-radius: 8px;
+      padding: 6px 8px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .hist-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: var(--font-mono); font-size: 9px; color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+    #histCanvas {
+      width: 96px; height: 32px;
+      display: block;
+    }
+
+    .quick-tools {
+      pointer-events: auto;
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
+    }
+
+    .icon-btn {
+      background: var(--bg-glass);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border-neutral);
+      color: var(--text-main);
+      height: 34px; padding: 0 10px;
+      border-radius: 8px;
+      font-size: 11px; font-weight: 600;
+      font-family: var(--font-mono);
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0,0,0,.55);
-      transition: transform .1s;
-    }
-    .shutter:active { transform: scale(0.92); }
-    .shutter:disabled { opacity: .5; cursor: not-allowed; }
-    .hidden { display: none !important; }
-    .toast {
-      position: absolute;
-      top: calc(64px + env(safe-area-inset-top));
-      left: 50%; transform: translateX(-50%);
-      background: rgba(220,40,40,0.92);
-      color: #fff; padding: 10px 14px; border-radius: 8px;
-      font-size: 13px; z-index: 20;
-      max-width: 86%; text-align: center;
-      box-shadow: 0 4px 18px rgba(0,0,0,.5);
-    }
-    .modal {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.88);
-      display: flex; align-items: center; justify-content: center;
-      flex-direction: column; z-index: 50; padding: 16px;
-    }
-    .modal img {
-      max-width: 100%; max-height: 70vh;
-      border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,.6);
-      background: #111;
-    }
-    .modal .actions { margin-top: 18px; display: flex; gap: 12px; }
-    .btn {
-      background: #00ff88; color: #000;
-      border: none; padding: 11px 20px; border-radius: 24px;
-      font-weight: 700; font-size: 14px;
-      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: all .15s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    .btn.alt { background: #3a3a3a; color: #fff; }
-    .spinner {
-      width: 56px; height: 56px;
-      border: 5px solid rgba(255,255,255,0.18);
-      border-top-color: #00ff88;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto;
+    .icon-btn:active { transform: scale(0.94); }
+    .icon-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 255, 136, 0.14);
+      box-shadow: var(--accent-glow);
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .progress {
-      color: #00ff88; margin-top: 14px;
-      font-size: 14px; text-align: center;
-    }
-    #captureLoading { text-align: center; }
 
-    /* Settings bar (gain slider) */
-    .settings-bar {
+    .cap-hint {
       position: absolute;
-      top: 0; left: 0; right: 0;
-      z-index: 6;
-      padding: 10px 14px;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0));
-      display: flex; align-items: center; gap: 10px;
+      top: 66px; right: 12px;
+      z-index: 8;
+      font-family: var(--font-mono);
+      font-size: 10px; color: var(--accent);
+      background: rgba(5, 10, 12, 0.78);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 8px; border-radius: 6px;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    /* ============ BOTTOM CONTROL DECK ============ */
+    .bottom-deck {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 12;
+      background: linear-gradient(0deg, rgba(5,8,11,0.95) 0%, rgba(5,8,11,0.78) 80%, rgba(5,8,11,0) 100%);
+      padding: 18px 14px calc(18px + env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; gap: 12px;
       pointer-events: none;
     }
-    .settings-bar > * { pointer-events: auto; }
-    .gain-label {
-      font-size: 12px; color: #cfe; font-weight: 600;
-      letter-spacing: .5px;
+    .bottom-deck > * { pointer-events: auto; }
+
+    /* Palette & Preset Strip */
+    .preset-strip {
+      display: flex; gap: 6px; justify-content: center;
+      overflow-x: auto; scrollbar-width: none;
+      padding: 2px 0;
     }
-    .gain-slider {
+    .preset-strip::-webkit-scrollbar { display: none; }
+
+    .chip {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-neutral);
+      color: #b4c6c0;
+      padding: 6px 11px;
+      border-radius: 16px;
+      font-size: 11px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chip-swatch {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .chip.active {
+      background: rgba(0, 255, 136, 0.16);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: var(--accent-glow);
+    }
+
+    /* Sliders Panel (Gain & Zoom) */
+    .sliders-panel {
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-neutral);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 9px;
+    }
+
+    .slider-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .slider-label {
+      width: 48px;
+      font-family: var(--font-mono);
+      font-size: 11px; color: #b8ccc5; font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .range-input {
       flex: 1;
       -webkit-appearance: none; appearance: none;
       height: 4px; border-radius: 2px;
-      background: linear-gradient(to right, #003 0%, #00ff88 100%);
+      background: linear-gradient(90deg, rgba(255,255,255,0.12) 0%, var(--accent) 100%);
       outline: none;
     }
-    .gain-slider::-webkit-slider-thumb {
+    .range-input::-webkit-slider-thumb {
       -webkit-appearance: none; appearance: none;
-      width: 22px; height: 22px; border-radius: 50%;
-      background: #00ff88; border: 2px solid #fff;
-      box-shadow: 0 2px 6px rgba(0,0,0,.5);
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--accent); border: 2px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.65);
       cursor: pointer;
     }
-    .gain-slider::-moz-range-thumb {
-      width: 22px; height: 22px; border-radius: 50%;
-      background: #00ff88; border: 2px solid #fff;
+    .range-input::-moz-range-thumb {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--accent); border: 2px solid #fff;
       cursor: pointer;
     }
-    .gain-value {
-      min-width: 38px; text-align: right;
-      font-size: 13px; color: #00ff88; font-weight: 700;
+
+    .slider-val {
+      min-width: 42px; text-align: right;
+      font-family: var(--font-mono);
+      font-size: 12px; color: var(--accent); font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
-    .cap-hint {
-      position: absolute;
-      top: 44px; right: 14px;
-      font-size: 10px; color: #6c8;
-      background: rgba(0,0,0,0.5);
-      padding: 3px 7px; border-radius: 4px;
-      pointer-events: none;
+
+    /* Action Row (Shutter & Mode Specific Controls) */
+    .action-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 2px 8px 0;
     }
 
-    /* Long exposure mode toggle */
-    .lx-toggle {
-      pointer-events: auto;
+    .action-side {
+      flex: 1; display: flex; align-items: center;
+    }
+    .action-side.right { justify-content: flex-end; }
+
+    /* Shutter Button */
+    .shutter-wrap {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .shutter {
+      width: 68px; height: 68px; border-radius: 50%;
+      border: 3px solid #fff;
+      background: radial-gradient(circle at 35% 35%, #00ff88, #009952);
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(0, 255, 136, 0.35);
+      transition: transform .12s, background .2s, box-shadow .2s;
+      display: flex; align-items: center; justify-content: center;
+      color: #031a0e; font-family: var(--font-mono); font-weight: 800; font-size: 11px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .shutter.lx-shutter {
+      background: radial-gradient(circle at 35% 35%, #ff4b6b, #c81d3b);
+      box-shadow: 0 4px 18px rgba(255, 59, 92, 0.45);
+      color: #fff;
+    }
+    .shutter:active { transform: scale(0.92); }
+    .shutter:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Long Exposure Options Bar */
+    .lx-config {
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+    }
+    .seg-group {
       display: inline-flex;
-      background: rgba(0,0,0,0.55);
-      border-radius: 22px;
-      padding: 4px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-neutral);
+      border-radius: 20px; padding: 3px;
       backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     }
-    .lx-opt {
-      background: transparent; color: #aab;
-      border: none; padding: 7px 14px;
-      font-size: 12px; font-weight: 600;
-      border-radius: 18px; cursor: pointer;
+    .seg-btn {
+      background: transparent; color: var(--text-muted);
+      border: none; padding: 5px 12px;
+      font-size: 11px; font-weight: 600;
+      border-radius: 16px; cursor: pointer;
+      transition: all .15s;
       -webkit-tap-highlight-color: transparent;
-      transition: background .15s, color .15s;
     }
-    .lx-opt.active { background: #00ff88; color: #000; }
+    .seg-btn.active {
+      background: var(--accent); color: #04140c; font-weight: 700;
+    }
 
-    /* Tap to play prompt for autoplay policy fallbacks */
+    /* ============ SENSOR DIAGNOSTICS PANEL ============ */
+    .sensor-panel {
+      position: absolute; inset: 12px;
+      z-index: 15;
+      display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+      padding-bottom: 20px;
+      pointer-events: auto;
+    }
+
+    .diag-card {
+      background: var(--bg-glass-heavy);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-neutral);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .diag-title {
+      font-family: var(--font-mono);
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      letter-spacing: 1px; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .diag-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    }
+    .diag-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px; padding: 8px 10px;
+    }
+    .diag-k {
+      font-size: 10px; color: var(--text-muted); margin-bottom: 3px;
+    }
+    .diag-v {
+      font-family: var(--font-mono);
+      font-size: 12px; font-weight: 700; color: var(--text-main);
+      word-break: break-all;
+    }
+    .status-badge {
+      padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    }
+    .status-ok { background: rgba(0,255,136,0.18); color: #00ff88; border: 1px solid rgba(0,255,136,0.4); }
+    .status-no { background: rgba(255,59,92,0.18); color: #ff6b84; border: 1px solid rgba(255,59,92,0.4); }
+
+    /* ============ LIVE CAPTURE OVERLAY & MODAL ============ */
+    .lx-live-banner {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 25;
+      background: rgba(5, 10, 14, 0.85);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 20px 26px;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.75);
+      min-width: 230px;
+    }
+
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(0,255,136,0.18);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .progress-title {
+      font-family: var(--font-mono);
+      color: var(--accent); font-size: 14px; font-weight: 700;
+    }
+    .progress-sub {
+      font-family: var(--font-mono);
+      color: var(--text-muted); font-size: 11px; margin-top: 4px;
+    }
+
+    .modal {
+      position: fixed; inset: 0;
+      background: rgba(3, 6, 8, 0.92);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; z-index: 60; padding: 18px;
+    }
+    .modal-header {
+      font-family: var(--font-mono);
+      font-size: 12px; color: var(--accent);
+      letter-spacing: 1px; margin-bottom: 10px;
+    }
+    .modal img {
+      max-width: 100%; max-height: 68vh;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 12px 48px rgba(0,0,0,0.8);
+      background: #0a0d0c;
+    }
+    .modal .meta-line {
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px; color: var(--text-muted);
+    }
+    .modal .actions { margin-top: 16px; display: flex; gap: 12px; }
+    .btn {
+      background: var(--accent); color: #04170d;
+      border: none; padding: 11px 22px; border-radius: 24px;
+      font-weight: 700; font-size: 13px;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: transform .12s, opacity .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.95); }
+    .btn.alt {
+      background: rgba(255,255,255,0.1);
+      color: var(--text-main);
+      border: 1px solid var(--border-neutral);
+    }
+
+    .toast {
+      position: absolute;
+      top: 70px; left: 50%; transform: translateX(-50%);
+      background: rgba(220, 38, 68, 0.94);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; padding: 9px 14px; border-radius: 8px;
+      font-size: 12px; font-weight: 600; z-index: 40;
+      max-width: 88%; text-align: center;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    }
+
     .play-fallback {
       position: absolute; inset: 0;
-      background: rgba(0,0,0,0.75);
-      z-index: 30;
+      background: rgba(5, 8, 10, 0.85);
+      z-index: 35;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 16px; padding: 24px; text-align: center;
     }
-    .play-fallback p { font-size: 15px; color: #eee; line-height: 1.5; }
+    .play-fallback p { font-size: 14px; color: var(--text-main); line-height: 1.5; }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div id="app">
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-mode="filter">필터 모드</button>
-      <button class="tab" data-mode="longexposure">장노출 모드</button>
-      <button class="tab" data-mode="sensor">센서 모드</button>
-    </div>
-    <div class="stage">
+    <!-- Top Header & Live Telemetry -->
+    <header class="top-bar">
+      <div class="brand-row">
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <span class="brand-title">ARGON NV</span>
+          <span class="brand-sub">GEN-4 OPTICS</span>
+        </div>
+        <div class="telemetry-pills">
+          <span class="pill">LUX <strong id="luxVal">--</strong></span>
+          <span class="pill"><strong id="fpsVal">--</strong> FPS</span>
+        </div>
+      </div>
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-mode="filter">
+          <span class="tab-code">01</span>필터 투시
+        </button>
+        <button class="tab" data-mode="longexposure">
+          <span class="tab-code">02</span>장노출 합성
+        </button>
+        <button class="tab" data-mode="sensor">
+          <span class="tab-code">03</span>센서 · 진단
+        </button>
+      </nav>
+    </header>
+
+    <!-- Main Optical Stage -->
+    <main class="stage">
       <video id="video" autoplay playsinline muted></video>
       <canvas id="canvas"></canvas>
-      <div class="settings-bar" id="settingsBar">
-        <span class="gain-label">감도</span>
-        <input class="gain-slider" id="gain" type="range" min="1" max="8" step="0.1" value="1" />
-        <span class="gain-value" id="gainVal">×1.0</span>
-      </div>
-      <div class="cap-hint hidden" id="capHint"></div>
-      <div class="controls hidden" id="controls">
-        <div class="lx-toggle">
-          <button class="lx-opt active" data-lx="max">Max · 빛 모으기</button>
-          <button class="lx-opt" data-lx="avg">Avg · 노이즈↓</button>
+
+      <!-- Top Stage HUD: Histogram & Tactical Toggles -->
+      <div class="hud-top-overlay" id="hudTopOverlay">
+        <div class="hist-box">
+          <div class="hist-header">
+            <span>LUMINANCE</span>
+            <span id="evBadge">GAIN ×1.0</span>
+          </div>
+          <canvas id="histCanvas" width="96" height="32"></canvas>
         </div>
-        <button class="shutter" id="shutter" aria-label="촬영"></button>
+
+        <div class="quick-tools">
+          <button class="icon-btn active" id="dnrBtn" title="시간축 노이즈 억제 (Temporal DNR)">DNR</button>
+          <button class="icon-btn active" id="hudBtn" title="전술 조준선 및 그리드 표시">HUD</button>
+          <button class="icon-btn hidden" id="torchBtn" title="하드웨어 플래시/토치">TORCH</button>
+          <button class="icon-btn" id="flipCamBtn" title="전/후면 카메라 전환">CAM ↻</button>
+        </div>
       </div>
+
+      <div class="cap-hint hidden" id="capHint"></div>
+
+      <!-- Sensor & Diagnostics Mode Overlay -->
+      <div class="sensor-panel hidden" id="sensorPanel">
+        <div class="diag-card">
+          <div class="diag-title">
+            <span>WEBXR DEPTH & AR SENSOR</span>
+            <span class="status-badge status-no" id="xrStatusBadge">검사 중...</span>
+          </div>
+          <p id="xrDetailText" style="font-size:12px; color:#b8ccc5; line-height:1.5;">
+            기기의 하드웨어 ToF / LiDAR 깊이 센서 지원 여부를 확인하고 있습니다.
+          </p>
+        </div>
+
+        <div class="diag-card">
+          <div class="diag-title">
+            <span>OPTICAL STREAM TELEMETRY</span>
+            <span style="color:var(--text-muted); font-size:10px;">LIVE HARDWARE</span>
+          </div>
+          <div class="diag-grid" id="camDiagGrid">
+            <div class="diag-item"><div class="diag-k">해상도 (Resolution)</div><div class="diag-v" id="dgRes">--</div></div>
+            <div class="diag-item"><div class="diag-k">프레임레이트 (FPS)</div><div class="diag-v" id="dgFps">--</div></div>
+            <div class="diag-item"><div class="diag-k">노출 제어 (Exposure)</div><div class="diag-v" id="dgExp">--</div></div>
+            <div class="diag-item"><div class="diag-k">EV 보정 범위</div><div class="diag-v" id="dgEv">--</div></div>
+            <div class="diag-item"><div class="diag-k">초점 모드 (Focus)</div><div class="diag-v" id="dgFocus">--</div></div>
+            <div class="diag-item"><div class="diag-k">하드웨어 토치 (Torch)</div><div class="diag-v" id="dgTorch">--</div></div>
+          </div>
+        </div>
+
+        <div class="diag-card">
+          <div class="diag-title">
+            <span>SCENE PHOTOMETRY ANALYSIS</span>
+            <span id="dgSceneState" style="color:var(--accent);">야간 분석 중</span>
+          </div>
+          <div class="diag-grid">
+            <div class="diag-item"><div class="diag-k">평균 휘도 (0-255)</div><div class="diag-v" id="dgAvgLum">--</div></div>
+            <div class="diag-item"><div class="diag-k">암부 비율 (Shadow %)</div><div class="diag-v" id="dgShadowPct">--</div></div>
+            <div class="diag-item"><div class="diag-k">명부 비율 (Highlight %)</div><div class="diag-v" id="dgHighPct">--</div></div>
+            <div class="diag-item"><div class="diag-k">권장 증폭 배율</div><div class="diag-v" id="dgRecGain">--</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Control Deck -->
+      <div class="bottom-deck" id="bottomDeck">
+        <!-- Color Palette Selector (Filter Mode) -->
+        <div class="preset-strip" id="paletteStrip">
+          <button class="chip active" data-palette="green">
+            <span class="chip-swatch" style="background:#00ff66;"></span>P43 그린
+          </button>
+          <button class="chip" data-palette="white">
+            <span class="chip-swatch" style="background:#b8f4ff;"></span>P45 화이트
+          </button>
+          <button class="chip" data-palette="amber">
+            <span class="chip-swatch" style="background:#ffb326;"></span>전술 앰버
+          </button>
+          <button class="chip" data-palette="thermal">
+            <span class="chip-swatch" style="background:linear-gradient(135deg,#5a00b8,#ff3b00,#ffff55);"></span>열화상 LUT
+          </button>
+        </div>
+
+        <!-- Long Exposure Configuration (Long Exposure Mode) -->
+        <div class="lx-config hidden" id="lxConfig">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+            <div class="seg-group" id="lxModeGroup">
+              <button class="seg-btn active" data-lx="max">MAX · 빛 모으기</button>
+              <button class="seg-btn" data-lx="avg">AVG · 노이즈 제거</button>
+              <button class="seg-btn" data-lx="hdr">HDR · 톤매핑</button>
+            </div>
+            <div class="seg-group" id="lxTimeGroup">
+              <button class="seg-btn" data-sec="1.5">1.5s</button>
+              <button class="seg-btn active" data-sec="3">3.0s</button>
+              <button class="seg-btn" data-sec="5">5.0s</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gain & Digital Zoom Sliders -->
+        <div class="sliders-panel" id="slidersPanel">
+          <div class="slider-row">
+            <span class="slider-label">GAIN</span>
+            <input class="range-input" id="gain" type="range" min="1" max="8" step="0.1" value="2.0" />
+            <span class="slider-val" id="gainVal">×2.0</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">ZOOM</span>
+            <input class="range-input" id="zoom" type="range" min="1" max="4" step="0.1" value="1.0" />
+            <span class="slider-val" id="zoomVal">1.0×</span>
+          </div>
+        </div>
+
+        <!-- Shutter & Compare Bar -->
+        <div class="action-bar">
+          <div class="action-side">
+            <button class="icon-btn" id="compareBtn">원본 비교 (HOLD)</button>
+          </div>
+          <div class="shutter-wrap">
+            <button class="shutter" id="shutter" aria-label="촬영">SNAP</button>
+          </div>
+          <div class="action-side right">
+            <button class="icon-btn" id="autoGainBtn">AUTO GAIN</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Long Exposure Progress Banner -->
+      <div class="lx-live-banner hidden" id="lxLiveBanner">
+        <div class="spinner"></div>
+        <div class="progress-title" id="captureProgress">장노출 촬영 중... 0%</div>
+        <div class="progress-sub" id="captureSubInfo">프레임 누적 합성 진행 중</div>
+      </div>
+
       <div class="toast hidden" id="toast"></div>
+
       <div class="play-fallback hidden" id="playFallback">
-        <p>카메라 화면을 시작하려면 화면을 터치해 주세요.</p>
-        <button class="btn" id="playFallbackBtn">카메라 시작</button>
+        <p>카메라 스트림을 시작하려면 아래 버튼을 터치해 주세요.</p>
+        <button class="btn" id="playFallbackBtn">광학 스트림 시작</button>
       </div>
-    </div>
+    </main>
   </div>
 
+  <!-- Result Preview Modal -->
   <div class="modal hidden" id="captureModal">
-    <div id="captureLoading">
-      <div class="spinner"></div>
-      <div class="progress" id="captureProgress">장노출 촬영 중... 0%</div>
-    </div>
-    <img id="captureImage" class="hidden" alt="capture result" />
-    <div class="actions hidden" id="captureActions">
-      <a class="btn" id="downloadBtn" download="night-vision.png">저장</a>
+    <div class="modal-header" id="modalHeader">ARGON OPTICAL CAPTURE</div>
+    <img id="captureImage" alt="capture result" />
+    <div class="meta-line" id="captureMeta"></div>
+    <div class="actions">
+      <a class="btn" id="downloadBtn" download="argon-night-vision.png">이미지 저장</a>
       <button class="btn alt" id="closeModalBtn">닫기</button>
     </div>
   </div>
@@ -235,64 +686,257 @@
   <script>
     'use strict';
 
+    // ============ DOM REFERENCES ============
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const histCanvas = document.getElementById('histCanvas');
+    const histCtx = histCanvas.getContext('2d');
+
     const tabs = document.getElementById('tabs');
-    const controls = document.getElementById('controls');
-    const shutterBtn = document.getElementById('shutter');
-    const toast = document.getElementById('toast');
-    const captureModal = document.getElementById('captureModal');
-    const captureLoading = document.getElementById('captureLoading');
-    const captureProgress = document.getElementById('captureProgress');
-    const captureImage = document.getElementById('captureImage');
-    const captureActions = document.getElementById('captureActions');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const closeModalBtn = document.getElementById('closeModalBtn');
-    const settingsBar = document.getElementById('settingsBar');
+    const hudTopOverlay = document.getElementById('hudTopOverlay');
+    const bottomDeck = document.getElementById('bottomDeck');
+    const paletteStrip = document.getElementById('paletteStrip');
+    const lxConfig = document.getElementById('lxConfig');
+    const sensorPanel = document.getElementById('sensorPanel');
+
     const gainSlider = document.getElementById('gain');
     const gainVal = document.getElementById('gainVal');
+    const zoomSlider = document.getElementById('zoom');
+    const zoomVal = document.getElementById('zoomVal');
+    const evBadge = document.getElementById('evBadge');
+    const luxVal = document.getElementById('luxVal');
+    const fpsVal = document.getElementById('fpsVal');
+
+    const dnrBtn = document.getElementById('dnrBtn');
+    const hudBtn = document.getElementById('hudBtn');
+    const torchBtn = document.getElementById('torchBtn');
+    const flipCamBtn = document.getElementById('flipCamBtn');
+    const compareBtn = document.getElementById('compareBtn');
+    const autoGainBtn = document.getElementById('autoGainBtn');
+    const shutterBtn = document.getElementById('shutter');
+
     const capHint = document.getElementById('capHint');
+    const toast = document.getElementById('toast');
     const playFallback = document.getElementById('playFallback');
     const playFallbackBtn = document.getElementById('playFallbackBtn');
 
+    const lxLiveBanner = document.getElementById('lxLiveBanner');
+    const captureProgress = document.getElementById('captureProgress');
+    const captureSubInfo = document.getElementById('captureSubInfo');
+
+    const captureModal = document.getElementById('captureModal');
+    const captureImage = document.getElementById('captureImage');
+    const captureMeta = document.getElementById('captureMeta');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+
+    // ============ APPLICATION STATE ============
     let stream = null;
-    let mode = 'filter';
+    let facingMode = 'environment';
+    let torchOn = false;
+    let mode = 'filter';              // 'filter' | 'longexposure' | 'sensor'
+    let palette = 'green';            // 'green' | 'white' | 'amber' | 'thermal'
+    let lxMode = 'max';               // 'max' | 'avg' | 'hdr'
+    let lxDurationMs = 3000;          // 1500 | 3000 | 5000
+    let gain = parseFloat(gainSlider.value); // 1.0 – 8.0
+    let zoom = parseFloat(zoomSlider.value); // 1.0 – 4.0
+
+    let useDnr = true;                // Temporal noise reduction
+    let showHud = true;               // Tactical reticle & frame overlay
+    let isComparing = false;          // Bypass filter while holding compare
+
     let rafId = null;
     let capturing = false;
-    let gain = parseFloat(gainSlider.value);     // 1.0 – 8.0
-    let lxMode = 'max';                          // 'max' | 'avg'
 
-    gainSlider.addEventListener('input', () => {
-      gain = parseFloat(gainSlider.value);
-      gainVal.textContent = '×' + gain.toFixed(1);
+    // Pre-allocated buffers for zero-GC hot path
+    let dnrBuffer = null;             // Float32Array for temporal EMA
+    const histBins = new Uint32Array(32);
+    let sceneAvgLum = 0;
+    let shadowRatio = 0;
+    let highlightRatio = 0;
+
+    // FPS tracking
+    let frameCount = 0;
+    let lastFpsTs = performance.now();
+    let currentFps = 0;
+
+    // ============ PRECOMPUTED THERMAL LUT (256 entries * RGB) ============
+    const thermalLUT = new Uint8Array(256 * 3);
+    (function buildThermalLUT() {
+      // Ironbow-inspired gradient stops: [pos(0-255), R, G, B]
+      const stops = [
+        [0,   5,   4,  25],
+        [48,  65,  10, 115],
+        [105, 165, 20,  90],
+        [160, 235, 85,  15],
+        [215, 255, 195, 25],
+        [255, 255, 255, 240]
+      ];
+      for (let i = 0; i < 256; i++) {
+        let s0 = stops[0], s1 = stops[stops.length - 1];
+        for (let k = 0; k < stops.length - 1; k++) {
+          if (i >= stops[k][0] && i <= stops[k + 1][0]) {
+            s0 = stops[k]; s1 = stops[k + 1];
+            break;
+          }
+        }
+        const span = Math.max(1, s1[0] - s0[0]);
+        const t = (i - s0[0]) / span;
+        thermalLUT[i * 3]     = (s0[1] + (s1[1] - s0[1]) * t) | 0;
+        thermalLUT[i * 3 + 1] = (s0[2] + (s1[2] - s0[2]) * t) | 0;
+        thermalLUT[i * 3 + 2] = (s0[3] + (s1[3] - s0[3]) * t) | 0;
+      }
+    })();
+
+    // ============ UI CONTROLS WIRING ============
+    function updateGainUI(val) {
+      gain = Math.max(1, Math.min(8, parseFloat(val)));
+      gainSlider.value = gain;
+      const text = '×' + gain.toFixed(1);
+      gainVal.textContent = text;
+      evBadge.textContent = 'GAIN ' + text;
+    }
+
+    gainSlider.addEventListener('input', () => updateGainUI(gainSlider.value));
+    updateGainUI(gainSlider.value);
+
+    zoomSlider.addEventListener('input', () => {
+      zoom = parseFloat(zoomSlider.value);
+      zoomVal.textContent = zoom.toFixed(1) + '×';
     });
-    gainVal.textContent = '×' + gain.toFixed(1);
 
-    document.querySelectorAll('.lx-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        lxMode = btn.dataset.lx;
-        document.querySelectorAll('.lx-opt').forEach(b => {
-          b.classList.toggle('active', b.dataset.lx === lxMode);
-        });
+    paletteStrip.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      palette = btn.dataset.palette;
+      paletteStrip.querySelectorAll('.chip').forEach(b => {
+        b.classList.toggle('active', b.dataset.palette === palette);
       });
     });
 
+    document.getElementById('lxModeGroup').addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      lxMode = btn.dataset.lx;
+      document.querySelectorAll('#lxModeGroup .seg-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.lx === lxMode);
+      });
+    });
+
+    document.getElementById('lxTimeGroup').addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      lxDurationMs = parseFloat(btn.dataset.sec) * 1000;
+      document.querySelectorAll('#lxTimeGroup .seg-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+      });
+    });
+
+    dnrBtn.addEventListener('click', () => {
+      useDnr = !useDnr;
+      dnrBtn.classList.toggle('active', useDnr);
+      if (!useDnr) dnrBuffer = null;
+    });
+
+    hudBtn.addEventListener('click', () => {
+      showHud = !showHud;
+      hudBtn.classList.toggle('active', showHud);
+    });
+
+    // Hold to compare original camera feed
+    const startCompare = () => { isComparing = true; compareBtn.classList.add('active'); };
+    const endCompare = () => { isComparing = false; compareBtn.classList.remove('active'); };
+    compareBtn.addEventListener('mousedown', startCompare);
+    compareBtn.addEventListener('mouseup', endCompare);
+    compareBtn.addEventListener('mouseleave', endCompare);
+    compareBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startCompare(); }, { passive: false });
+    compareBtn.addEventListener('touchend', endCompare);
+    compareBtn.addEventListener('touchcancel', endCompare);
+
+    // Smart Auto-Gain based on real-time scene luminance
+    autoGainBtn.addEventListener('click', () => {
+      const targetGain = computeRecommendedGain(sceneAvgLum);
+      updateGainUI(targetGain);
+      showCapHint(`장면 밝기(${sceneAvgLum.toFixed(0)}) 기준 최적 감도 ×${targetGain.toFixed(1)} 적용`, 2600);
+    });
+
+    function computeRecommendedGain(avgLum) {
+      if (avgLum <= 8) return 6.5;
+      if (avgLum <= 18) return 4.8;
+      if (avgLum <= 35) return 3.4;
+      if (avgLum <= 65) return 2.2;
+      if (avgLum <= 110) return 1.5;
+      return 1.0;
+    }
+
+    flipCamBtn.addEventListener('click', async () => {
+      facingMode = (facingMode === 'environment') ? 'user' : 'environment';
+      dnrBuffer = null;
+      await initCamera();
+    });
+
+    torchBtn.addEventListener('click', async () => {
+      if (!stream) return;
+      const track = stream.getVideoTracks()[0];
+      if (!track) return;
+      try {
+        torchOn = !torchOn;
+        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+        torchBtn.classList.toggle('active', torchOn);
+      } catch (e) {
+        torchOn = false;
+        torchBtn.classList.remove('active');
+        showToast('토치 제어에 실패했습니다.', 2000);
+      }
+    });
+
+    // ============ UTILITIES ============
+    let toastTimer = null;
     function showToast(msg, duration = 0) {
+      clearTimeout(toastTimer);
       toast.textContent = msg;
       toast.classList.remove('hidden');
-      if (duration > 0) setTimeout(() => toast.classList.add('hidden'), duration);
+      if (duration > 0) {
+        toastTimer = setTimeout(() => toast.classList.add('hidden'), duration);
+      }
+    }
+
+    let hintTimer = null;
+    function showCapHint(msg, hideAfter = 0) {
+      clearTimeout(hintTimer);
+      capHint.textContent = msg;
+      capHint.classList.remove('hidden');
+      if (hideAfter > 0) {
+        hintTimer = setTimeout(() => capHint.classList.add('hidden'), hideAfter);
+      }
+    }
+
+    function formatTimestamp() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     }
 
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.max(2, Math.floor(rect.width * dpr));
-      canvas.height = Math.max(2, Math.floor(rect.height * dpr));
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+      const nw = Math.max(2, Math.floor(rect.width * dpr));
+      const nh = Math.max(2, Math.floor(rect.height * dpr));
+      if (canvas.width !== nw || canvas.height !== nh) {
+        canvas.width = nw;
+        canvas.height = nh;
+        dnrBuffer = null;
+      }
     }
 
+    // ============ CAMERA INITIALIZATION & CAPABILITIES ============
     async function initCamera() {
       try {
+        if (stream) {
+          stream.getTracks().forEach(t => t.stop());
+          stream = null;
+        }
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw Object.assign(new Error('NotSupported'), { name: 'NotSupportedError' });
         }
@@ -300,13 +944,13 @@
                              location.hostname === 'localhost' ||
                              location.hostname === '127.0.0.1';
         if (!isSecureHost) {
-          showToast('카메라는 HTTPS 또는 localhost 환경에서만 작동합니다.');
+          showToast('카메라는 HTTPS 또는 localhost 보안 환경에서만 작동합니다.');
           return;
         }
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
-            facingMode: { ideal: 'environment' },
+            facingMode: { ideal: facingMode },
             width: { ideal: 1280 },
             height: { ideal: 720 }
           }
@@ -314,8 +958,8 @@
         video.srcObject = stream;
         try {
           await video.play();
-        } catch (playErr) {
-          // Autoplay policy fallback (e.g. iOS low-power mode or background tab)
+          playFallback.classList.add('hidden');
+        } catch (_) {
           playFallback.classList.remove('hidden');
         }
         await tryBoostCameraExposure();
@@ -326,7 +970,7 @@
         if (name === 'NotAllowedError' || name === 'SecurityError') {
           msg = '카메라 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해 주세요.';
         } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
-          msg = '사용 가능한 후면 카메라를 찾을 수 없습니다.';
+          msg = '사용 가능한 카메라를 찾을 수 없습니다.';
         } else if (name === 'NotSupportedError') {
           msg = '이 브라우저는 카메라 API를 지원하지 않습니다.';
         } else if (name === 'NotReadableError') {
@@ -347,10 +991,13 @@
 
     async function tryBoostCameraExposure() {
       try {
+        torchBtn.classList.add('hidden');
+        torchOn = false;
+        torchBtn.classList.remove('active');
         if (!stream) return;
         const track = stream.getVideoTracks()[0];
         if (!track || typeof track.getCapabilities !== 'function') {
-          showCapHint('노출 제어 미지원 (감도 슬라이더로 조정)', 4500);
+          showCapHint('소프트웨어 야간 증폭 활성', 3500);
           return;
         }
         const caps = track.getCapabilities() || {};
@@ -362,27 +1009,24 @@
         if (Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.includes('continuous')) {
           constraint.whiteBalanceMode = 'continuous';
         }
-        // Leave exposureCompensation at 0 (camera auto). Software gain controls brightness.
+        if (caps.torch) {
+          torchBtn.classList.remove('hidden');
+          notes.push('TORCH 가용');
+        }
+        // Keep exposureCompensation at camera default (0) to prevent stacked bleach-out
         if (caps.exposureCompensation && typeof caps.exposureCompensation.max === 'number') {
-          notes.push('EV±' + caps.exposureCompensation.max + ' 가용');
+          notes.push('EV±' + caps.exposureCompensation.max);
         }
-        if (Object.keys(constraint).length === 0) {
-          showCapHint('노출 제어 미지원 (감도 슬라이더로 조정)', 4500);
-          return;
+        if (Object.keys(constraint).length > 0) {
+          await track.applyConstraints({ advanced: [constraint] });
         }
-        await track.applyConstraints({ advanced: [constraint] });
-        showCapHint('자동 노출 · ' + (notes.join(' · ') || '연속 모드'), 4500);
+        showCapHint('OPTICAL LOCK · ' + (notes.join(' · ') || '연속 노출'), 3800);
       } catch (e) {
         console.warn('exposure boost failed:', e);
       }
     }
 
-    function showCapHint(msg, hideAfter = 0) {
-      capHint.textContent = msg;
-      capHint.classList.remove('hidden');
-      if (hideAfter > 0) setTimeout(() => capHint.classList.add('hidden'), hideAfter);
-    }
-
+    // Cover-fit video into canvas with digital zoom support
     function drawVideoCover(v, c, dw, dh) {
       const vw = v.videoWidth, vh = v.videoHeight;
       if (!vw || !vh) return false;
@@ -396,11 +1040,98 @@
         sw = vw; sh = vw / cRatio;
         sx = 0; sy = (vh - sh) / 2;
       }
+      if (zoom > 1.0) {
+        const zw = sw / zoom;
+        const zh = sh / zoom;
+        sx += (sw - zw) / 2;
+        sy += (sh - zh) / 2;
+        sw = zw;
+        sh = zh;
+      }
       c.drawImage(v, sx, sy, sw, sh, 0, 0, dw, dh);
       return true;
     }
 
-    // ============ FILTER MODE ============
+    // ============ TELEMETRY & MINI HISTOGRAM ============
+    function updateFpsAndTelemetry() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTs >= 500) {
+        currentFps = Math.round((frameCount * 1000) / (now - lastFpsTs));
+        fpsVal.textContent = currentFps;
+        luxVal.textContent = Math.round(sceneAvgLum * 1.4);
+        frameCount = 0;
+        lastFpsTs = now;
+        if (mode === 'sensor') refreshSensorDiagnostics();
+      }
+    }
+
+    function renderMiniHistogram() {
+      const hw = histCanvas.width, hh = histCanvas.height;
+      histCtx.clearRect(0, 0, hw, hh);
+      let maxBin = 1;
+      for (let i = 0; i < 32; i++) {
+        if (histBins[i] > maxBin) maxBin = histBins[i];
+      }
+      const barW = hw / 32;
+      histCtx.fillStyle = 'rgba(0, 255, 136, 0.78)';
+      for (let i = 0; i < 32; i++) {
+        const h = Math.max(1, (histBins[i] / maxBin) * (hh - 2));
+        histCtx.fillRect(i * barW, hh - h, Math.max(1, barW - 0.8), h);
+      }
+    }
+
+    // ============ TACTICAL OPTICAL HUD OVERLAY ============
+    function drawTacticalHud(w, h) {
+      if (!showHud) return;
+      ctx.save();
+      const cx = w / 2, cy = h / 2;
+      const radius = Math.min(w, h) * 0.28;
+
+      ctx.strokeStyle = 'rgba(0, 255, 136, 0.28)';
+      ctx.lineWidth = Math.max(1, w * 0.0018);
+
+      // Outer optical ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Crosshair ticks
+      const tick = radius * 0.14;
+      ctx.beginPath();
+      ctx.moveTo(cx - radius - tick * 0.5, cy); ctx.lineTo(cx - radius + tick, cy);
+      ctx.moveTo(cx + radius - tick, cy);       ctx.lineTo(cx + radius + tick * 0.5, cy);
+      ctx.moveTo(cx, cy - radius - tick * 0.5); ctx.lineTo(cx, cy - radius + tick);
+      ctx.moveTo(cx, cy + radius - tick);       ctx.lineTo(cx, cy + radius + tick * 0.5);
+      ctx.stroke();
+
+      // Center micro-reticle
+      const cr = Math.max(6, radius * 0.06);
+      ctx.strokeStyle = 'rgba(0, 255, 136, 0.45)';
+      ctx.beginPath();
+      ctx.moveTo(cx - cr, cy); ctx.lineTo(cx + cr, cy);
+      ctx.moveTo(cx, cy - cr); ctx.lineTo(cx, cy + cr);
+      ctx.stroke();
+
+      // Corner brackets
+      const padX = w * 0.07, padY = h * 0.14;
+      const bLen = Math.min(w, h) * 0.045;
+      ctx.strokeStyle = 'rgba(0, 255, 136, 0.32)';
+      ctx.beginPath();
+      // Top-left
+      ctx.moveTo(padX, padY + bLen); ctx.lineTo(padX, padY); ctx.lineTo(padX + bLen, padY);
+      // Top-right
+      ctx.moveTo(w - padX - bLen, padY); ctx.lineTo(w - padX, padY); ctx.lineTo(w - padX, padY + bLen);
+      // Bottom-left
+      ctx.moveTo(padX, h - padY - bLen); ctx.lineTo(padX, h - padY); ctx.lineTo(padX + bLen, h - padY);
+      // Bottom-right
+      ctx.moveTo(w - padX - bLen, h - padY); ctx.lineTo(w - padX, h - padY); ctx.lineTo(w - padX, h - padY - bLen);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ============ MODE 1: FILTER MODE ============
     function renderFilter() {
       if (mode !== 'filter') return;
       if (!video.videoWidth) {
@@ -408,59 +1139,141 @@
         return;
       }
       const w = canvas.width, h = canvas.height;
-      ctx.save();
-      ctx.filter = 'saturate(0)'; // grayscale only; brightness handled per-pixel
       drawVideoCover(video, ctx, w, h);
-      ctx.restore();
 
-      try {
-        const img = ctx.getImageData(0, 0, w, h);
-        const d = img.data;
-        const pixelGain = 1.6 * gain;
-        const offset = 4 * gain;
-        // Reinhard-style soft-knee tonemap: prevents clipping and bleaches
-        const knee = 100;
-        for (let i = 0; i < d.length; i += 4) {
-          const lum = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
-          const raw = lum * pixelGain + offset;
-          const boost = (255 * raw) / (raw + knee);
-          d[i]   = (boost * 0.10) | 0;
-          d[i+1] = boost | 0;
-          d[i+2] = (boost * 0.18) | 0;
-        }
-        ctx.putImageData(img, 0, 0);
-      } catch (_) { /* ignore frame errors */ }
+      if (!isComparing) {
+        try {
+          const img = ctx.getImageData(0, 0, w, h);
+          const d = img.data;
+          const totalPixels = d.length >> 2;
 
-      // Vignette effect
-      const grad = ctx.createRadialGradient(w/2, h/2, Math.min(w,h)*0.35, w/2, h/2, Math.max(w,h)*0.65);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.55)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+          if (useDnr && (!dnrBuffer || dnrBuffer.length !== totalPixels)) {
+            dnrBuffer = new Float32Array(totalPixels);
+          }
 
+          histBins.fill(0);
+          let lumSum = 0;
+          let darkCount = 0;
+          let brightCount = 0;
+
+          const pixelGain = 1.6 * gain;
+          const offset = 4 * gain;
+          // Reinhard soft-knee constant: prevents whiteout clipping
+          const knee = 100;
+          const palMode = palette;
+          const dnrActive = useDnr && dnrBuffer !== null;
+          const dnrAlpha = 0.32; // Temporal smoothing weight
+
+          for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+            const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+            lumSum += lum;
+            if (lum < 32) darkCount++;
+            else if (lum > 210) brightCount++;
+            histBins[(lum >> 3) & 31]++;
+
+            const raw = lum * pixelGain + offset;
+            let boost = (255 * raw) / (raw + knee);
+
+            if (dnrActive) {
+              const prev = dnrBuffer[p];
+              boost = prev === 0 ? boost : (prev * dnrAlpha + boost * (1 - dnrAlpha));
+              dnrBuffer[p] = boost;
+            }
+
+            if (palMode === 'green') {
+              d[i]     = (boost * 0.10) | 0;
+              d[i + 1] = boost | 0;
+              d[i + 2] = (boost * 0.18) | 0;
+            } else if (palMode === 'white') {
+              d[i]     = (boost * 0.74) | 0;
+              d[i + 1] = (boost * 0.96) | 0;
+              d[i + 2] = Math.min(255, (boost * 1.04) | 0);
+            } else if (palMode === 'amber') {
+              d[i]     = boost | 0;
+              d[i + 1] = (boost * 0.72) | 0;
+              d[i + 2] = (boost * 0.14) | 0;
+            } else {
+              // Precomputed Thermal LUT
+              const idx = (boost > 255 ? 255 : (boost < 0 ? 0 : boost | 0)) * 3;
+              d[i]     = thermalLUT[idx];
+              d[i + 1] = thermalLUT[idx + 1];
+              d[i + 2] = thermalLUT[idx + 2];
+            }
+          }
+
+          sceneAvgLum = lumSum / Math.max(1, totalPixels);
+          shadowRatio = (darkCount / Math.max(1, totalPixels)) * 100;
+          highlightRatio = (brightCount / Math.max(1, totalPixels)) * 100;
+
+          ctx.putImageData(img, 0, 0);
+        } catch (_) { /* ignore transient frame error */ }
+
+        // Optical vignette
+        const grad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.36, w / 2, h / 2, Math.max(w, h) * 0.66);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(1, 'rgba(0,0,0,0.58)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        drawTacticalHud(w, h);
+      }
+
+      renderMiniHistogram();
+      updateFpsAndTelemetry();
       rafId = requestAnimationFrame(renderFilter);
     }
 
-    // ============ LONG EXPOSURE MODE ============
+    // Instant snapshot in Filter Mode
+    function captureFilterSnapshot() {
+      if (!video.videoWidth) {
+        showToast('카메라가 아직 준비되지 않았습니다.', 1800);
+        return;
+      }
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        openResultModal(
+          dataUrl,
+          `FILTER SNAPSHOT · ${palette.toUpperCase()} · GAIN ×${gain.toFixed(1)} · ZOOM ${zoom.toFixed(1)}×`
+        );
+      } catch (e) {
+        showToast('스냅샷 저장에 실패했습니다.', 2000);
+      }
+    }
+
+    // ============ MODE 2: LONG EXPOSURE MODE ============
     function renderLongExposurePreview() {
-      if (mode !== 'longexposure') return;
-      if (capturing) return;
+      if (mode !== 'longexposure' || capturing) return;
       if (!video.videoWidth) {
         rafId = requestAnimationFrame(renderLongExposurePreview);
         return;
       }
-      const previewBoost = Math.min(4.0, 0.8 + gain * 0.35);
+      const w = canvas.width, h = canvas.height;
+      const previewBoost = isComparing ? 1.0 : Math.min(4.0, 0.85 + gain * 0.35);
       ctx.save();
       ctx.filter = `brightness(${previewBoost.toFixed(2)}) contrast(1.1)`;
-      drawVideoCover(video, ctx, canvas.width, canvas.height);
+      drawVideoCover(video, ctx, w, h);
       ctx.restore();
-      rafId = requestAnimationFrame(renderLongExposurePreview);
-    }
 
-    function formatTimestamp() {
-      const now = new Date();
-      const pad = (n) => String(n).padStart(2, '0');
-      return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      // Sample light histogram periodically
+      try {
+        const sample = ctx.getImageData(0, 0, w, h).data;
+        histBins.fill(0);
+        let lumSum = 0;
+        const step = 16; // Sparse sampling for preview efficiency
+        let count = 0;
+        for (let i = 0; i < sample.length; i += step) {
+          const lum = sample[i] * 0.299 + sample[i + 1] * 0.587 + sample[i + 2] * 0.114;
+          lumSum += lum;
+          histBins[(lum >> 3) & 31]++;
+          count++;
+        }
+        sceneAvgLum = lumSum / Math.max(1, count);
+        renderMiniHistogram();
+      } catch (_) {}
+
+      drawTacticalHud(w, h);
+      updateFpsAndTelemetry();
+      rafId = requestAnimationFrame(renderLongExposurePreview);
     }
 
     async function startLongExposure() {
@@ -470,190 +1283,265 @@
         return;
       }
       capturing = true;
+      stopRenderLoop();
       shutterBtn.disabled = true;
-      captureImage.classList.add('hidden');
-      captureActions.classList.add('hidden');
-      captureLoading.classList.remove('hidden');
-      captureModal.classList.remove('hidden');
-      captureProgress.textContent = '장노출 촬영 중... 0%';
+      lxLiveBanner.classList.remove('hidden');
 
       const w = canvas.width, h = canvas.height;
       const acc = new Float32Array(w * h * 3);
-      const useAvg = (lxMode === 'avg');
       let frames = 0;
-      const durationMs = 3000;
+      const durationMs = lxDurationMs;
       const startTs = performance.now();
+
       const tmp = document.createElement('canvas');
       tmp.width = w; tmp.height = h;
       const tctx = tmp.getContext('2d', { willReadFrequently: true });
+      const liveOut = ctx.createImageData(w, h);
+      const od = liveOut.data;
+      const finalGain = 1.15 * gain;
 
       await new Promise(resolve => {
         function step() {
           const elapsed = performance.now() - startTs;
           tctx.clearRect(0, 0, w, h);
           drawVideoCover(video, tctx, w, h);
+
           try {
             const frame = tctx.getImageData(0, 0, w, h).data;
-            if (useAvg) {
-              for (let i = 0, j = 0; i < frame.length; i += 4, j += 3) {
-                acc[j]   += frame[i];
-                acc[j+1] += frame[i+1];
-                acc[j+2] += frame[i+2];
-              }
-            } else {
-              for (let i = 0, j = 0; i < frame.length; i += 4, j += 3) {
-                if (frame[i]   > acc[j])   acc[j]   = frame[i];
-                if (frame[i+1] > acc[j+1]) acc[j+1] = frame[i+1];
-                if (frame[i+2] > acc[j+2]) acc[j+2] = frame[i+2];
-              }
-            }
             frames++;
+            const divisor = (lxMode === 'max') ? 1 : frames;
+            const useHdr = (lxMode === 'hdr');
+
+            for (let i = 0, j = 0; i < frame.length; i += 4, j += 3) {
+              if (lxMode === 'max') {
+                if (frame[i]     > acc[j])     acc[j]     = frame[i];
+                if (frame[i + 1] > acc[j + 1]) acc[j + 1] = frame[i + 1];
+                if (frame[i + 2] > acc[j + 2]) acc[j + 2] = frame[i + 2];
+              } else {
+                acc[j]     += frame[i];
+                acc[j + 1] += frame[i + 1];
+                acc[j + 2] += frame[i + 2];
+              }
+
+              // Live progressive rendering to main canvas
+              const rRaw = (acc[j]     / divisor) * finalGain;
+              const gRaw = (acc[j + 1] / divisor) * finalGain;
+              const bRaw = (acc[j + 2] / divisor) * finalGain;
+
+              if (useHdr) {
+                od[i]     = (255 * rRaw) / (rRaw + 90);
+                od[i + 1] = (255 * gRaw) / (gRaw + 90);
+                od[i + 2] = (255 * bRaw) / (bRaw + 90);
+              } else {
+                od[i]     = rRaw > 255 ? 255 : rRaw;
+                od[i + 1] = gRaw > 255 ? 255 : gRaw;
+                od[i + 2] = bRaw > 255 ? 255 : bRaw;
+              }
+              od[i + 3] = 255;
+            }
+            ctx.putImageData(liveOut, 0, 0);
           } catch (_) { /* skip frame */ }
+
           const pct = Math.min(100, (elapsed / durationMs * 100) | 0);
-          captureProgress.textContent = `장노출 촬영 중 (${useAvg ? 'Avg' : 'Max'})... ${pct}%`;
+          captureProgress.textContent = `장노출 합성 중 (${lxMode.toUpperCase()})... ${pct}%`;
+          captureSubInfo.textContent = `${frames} 프레임 누적 · ${(elapsed / 1000).toFixed(1)}s / ${(durationMs / 1000).toFixed(1)}s`;
+
           if (elapsed >= durationMs) return resolve();
           requestAnimationFrame(step);
         }
         requestAnimationFrame(step);
       });
 
-      const out = tctx.createImageData(w, h);
-      const od = out.data;
-      const finalGain = 1.15 * gain;
-      const divisor = useAvg ? Math.max(1, frames) : 1;
-      for (let i = 0, j = 0; i < od.length; i += 4, j += 3) {
-        od[i]   = Math.min(255, (acc[j]   / divisor) * finalGain);
-        od[i+1] = Math.min(255, (acc[j+1] / divisor) * finalGain);
-        od[i+2] = Math.min(255, (acc[j+2] / divisor) * finalGain);
-        od[i+3] = 255;
-      }
-      tctx.putImageData(out, 0, 0);
+      tctx.putImageData(liveOut, 0, 0);
+      lxLiveBanner.classList.add('hidden');
 
       let dataUrl;
-      try { dataUrl = tmp.toDataURL('image/png'); }
-      catch (e) {
+      try {
+        dataUrl = tmp.toDataURL('image/png');
+      } catch (e) {
         console.error(e);
         showToast('이미지 생성에 실패했습니다.', 2500);
-        captureModal.classList.add('hidden');
-        capturing = false; shutterBtn.disabled = false;
+        capturing = false;
+        shutterBtn.disabled = false;
+        if (mode === 'longexposure') rafId = requestAnimationFrame(renderLongExposurePreview);
         return;
       }
 
-      captureImage.src = dataUrl;
-      downloadBtn.href = dataUrl;
-      downloadBtn.download = `night-vision-${formatTimestamp()}.png`;
-      captureLoading.classList.add('hidden');
-      captureImage.classList.remove('hidden');
-      captureActions.classList.remove('hidden');
+      openResultModal(
+        dataUrl,
+        `LONG EXPOSURE (${lxMode.toUpperCase()}) · ${(durationMs / 1000).toFixed(1)}s (${frames} frames) · GAIN ×${gain.toFixed(1)}`
+      );
 
       capturing = false;
       shutterBtn.disabled = false;
+      if (mode === 'longexposure') {
+        rafId = requestAnimationFrame(renderLongExposurePreview);
+      }
+    }
+
+    function openResultModal(dataUrl, metaText) {
+      captureImage.src = dataUrl;
+      downloadBtn.href = dataUrl;
+      downloadBtn.download = `argon-nv-${formatTimestamp()}.png`;
+      captureMeta.textContent = metaText;
+      captureModal.classList.remove('hidden');
     }
 
     closeModalBtn.addEventListener('click', () => {
       captureModal.classList.add('hidden');
     });
 
-    // ============ SENSOR MODE (WebXR depth-sensing) ============
+    // ============ MODE 3: SENSOR & DIAGNOSTICS MODE ============
+    let xrChecked = false;
     async function startSensorMode() {
       stopRenderLoop();
-      const w = canvas.width, h = canvas.height;
+      refreshSensorDiagnostics();
+
+      if (!xrChecked) {
+        xrChecked = true;
+        const badge = document.getElementById('xrStatusBadge');
+        const detail = document.getElementById('xrDetailText');
+        try {
+          if (!('xr' in navigator) || !navigator.xr) throw new Error('NoWebXR');
+          if (typeof navigator.xr.isSessionSupported !== 'function') throw new Error('NoIsSessionSupported');
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          if (!supported) throw new Error('NoImmersiveAR');
+
+          const session = await navigator.xr.requestSession('immersive-ar', {
+            requiredFeatures: ['depth-sensing'],
+            depthSensing: {
+              usagePreference: ['cpu-optimized', 'gpu-optimized'],
+              dataFormatPreference: ['luminance-alpha', 'float32']
+            }
+          });
+          await session.end();
+          badge.textContent = '지원됨 (ACTIVE)';
+          badge.className = 'status-badge status-ok';
+          detail.textContent = '하드웨어 WebXR 깊이 센서(ToF/ARCore Depth API)를 사용할 수 있는 기기입니다.';
+        } catch (err) {
+          badge.textContent = '하드웨어 미지원';
+          badge.className = 'status-badge status-no';
+          detail.textContent = '현재 브라우저/기기는 WebXR 하드웨어 깊이 센서를 지원하지 않으며, ARGON 소프트웨어 광학 증폭 엔진으로 동작합니다.';
+        }
+      }
+
+      function renderSensorBg() {
+        if (mode !== 'sensor') return;
+        const w = canvas.width, h = canvas.height;
+        if (video.videoWidth) {
+          ctx.save();
+          ctx.filter = 'brightness(0.35) contrast(1.1)';
+          drawVideoCover(video, ctx, w, h);
+          ctx.restore();
+        }
+        updateFpsAndTelemetry();
+        rafId = requestAnimationFrame(renderSensorBg);
+      }
+      rafId = requestAnimationFrame(renderSensorBg);
+    }
+
+    function refreshSensorDiagnostics() {
+      const dgRes = document.getElementById('dgRes');
+      const dgFps = document.getElementById('dgFps');
+      const dgExp = document.getElementById('dgExp');
+      const dgEv = document.getElementById('dgEv');
+      const dgFocus = document.getElementById('dgFocus');
+      const dgTorch = document.getElementById('dgTorch');
+
       if (video.videoWidth) {
-        ctx.save();
-        ctx.filter = 'brightness(0.45) blur(2px)';
-        drawVideoCover(video, ctx, w, h);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, w, h);
+        dgRes.textContent = `${video.videoWidth} × ${video.videoHeight}`;
+      }
+      dgFps.textContent = `${currentFps} FPS`;
+
+      if (stream) {
+        const track = stream.getVideoTracks()[0];
+        if (track && typeof track.getCapabilities === 'function') {
+          const caps = track.getCapabilities() || {};
+          dgExp.textContent = Array.isArray(caps.exposureMode) ? caps.exposureMode.join(', ') : 'Auto';
+          dgEv.textContent = (caps.exposureCompensation && typeof caps.exposureCompensation.max === 'number')
+            ? `±${caps.exposureCompensation.max} EV` : 'N/A';
+          dgFocus.textContent = Array.isArray(caps.focusMode) ? caps.focusMode.join(', ') : 'Auto';
+          dgTorch.textContent = caps.torch ? 'Supported' : 'None';
+        }
       }
 
-      try {
-        if (!('xr' in navigator) || !navigator.xr) throw new Error('NoWebXR');
-        if (typeof navigator.xr.isSessionSupported !== 'function') throw new Error('NoIsSessionSupported');
-        const supported = await navigator.xr.isSessionSupported('immersive-ar');
-        if (!supported) throw new Error('NoImmersiveAR');
-
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['depth-sensing'],
-          depthSensing: {
-            usagePreference: ['cpu-optimized', 'gpu-optimized'],
-            dataFormatPreference: ['luminance-alpha', 'float32']
-          }
-        });
-        await session.end();
-        drawSensorMessage('하드웨어 깊이 센서를 사용할 수 있습니다.', '#00ff88');
-      } catch (err) {
-        console.warn('Depth sensor unavailable:', err && err.message || err);
-        drawSensorMessage('현재 기기는 하드웨어 깊이 센서를 지원하지 않습니다', '#ff6666');
-      }
+      document.getElementById('dgAvgLum').textContent = sceneAvgLum.toFixed(1);
+      document.getElementById('dgShadowPct').textContent = shadowRatio.toFixed(1) + '%';
+      document.getElementById('dgHighPct').textContent = highlightRatio.toFixed(1) + '%';
+      const rec = computeRecommendedGain(sceneAvgLum);
+      document.getElementById('dgRecGain').textContent = `×${rec.toFixed(1)}`;
+      const stateEl = document.getElementById('dgSceneState');
+      if (sceneAvgLum < 20) stateEl.textContent = '극저조도 (야간 증폭 필수)';
+      else if (sceneAvgLum < 65) stateEl.textContent = '저조도 (야간 투시 권장)';
+      else stateEl.textContent = '충분한 광량 (표준 감도)';
     }
 
-    function drawSensorMessage(text, color) {
-      const w = canvas.width, h = canvas.height;
-      const boxH = Math.max(120, h * 0.22);
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillRect(0, h/2 - boxH/2, w, boxH);
-      ctx.fillStyle = color;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const fontSize = Math.max(16, Math.floor(w / 26));
-      ctx.font = `600 ${fontSize}px -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
-
-      const maxWidth = w * 0.88;
-      const words = text.split(/\s+/);
-      const lines = [];
-      let line = '';
-      for (const word of words) {
-        const test = line ? line + ' ' + word : word;
-        if (ctx.measureText(test).width > maxWidth) {
-          if (line) lines.push(line);
-          line = word;
-        } else { line = test; }
-      }
-      if (line) lines.push(line);
-      const startY = h/2 - ((lines.length - 1) * fontSize * 1.3) / 2;
-      lines.forEach((l, i) => ctx.fillText(l, w/2, startY + i * fontSize * 1.3));
-    }
-
-    // ============ MODE SWITCHING ============
+    // ============ MODE SWITCHING & LIFECYCLE ============
     function stopRenderLoop() {
-      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
     }
 
     async function setMode(newMode) {
       if (mode === newMode && rafId) return;
       mode = newMode;
       stopRenderLoop();
+
       tabs.querySelectorAll('.tab').forEach(b => {
         b.classList.toggle('active', b.dataset.mode === newMode);
       });
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (newMode === 'filter') {
-        controls.classList.add('hidden');
-        settingsBar.classList.remove('hidden');
+        sensorPanel.classList.add('hidden');
+        hudTopOverlay.classList.remove('hidden');
+        bottomDeck.classList.remove('hidden');
+        paletteStrip.classList.remove('hidden');
+        lxConfig.classList.add('hidden');
+        shutterBtn.classList.remove('lx-shutter');
+        shutterBtn.textContent = 'SNAP';
         rafId = requestAnimationFrame(renderFilter);
       } else if (newMode === 'longexposure') {
-        controls.classList.remove('hidden');
-        settingsBar.classList.remove('hidden');
+        sensorPanel.classList.add('hidden');
+        hudTopOverlay.classList.remove('hidden');
+        bottomDeck.classList.remove('hidden');
+        paletteStrip.classList.add('hidden');
+        lxConfig.classList.remove('hidden');
+        shutterBtn.classList.add('lx-shutter');
+        shutterBtn.textContent = '3s EXP';
+        updateShutterLabel();
         rafId = requestAnimationFrame(renderLongExposurePreview);
       } else if (newMode === 'sensor') {
-        controls.classList.add('hidden');
-        settingsBar.classList.add('hidden');
+        hudTopOverlay.classList.add('hidden');
+        bottomDeck.classList.add('hidden');
         capHint.classList.add('hidden');
+        sensorPanel.classList.remove('hidden');
         await startSensorMode();
       }
     }
 
+    function updateShutterLabel() {
+      if (mode === 'longexposure') {
+        shutterBtn.textContent = (lxDurationMs / 1000).toFixed(1) + 's';
+      }
+    }
+
+    document.getElementById('lxTimeGroup').addEventListener('click', updateShutterLabel);
+
     tabs.addEventListener('click', (e) => {
       const btn = e.target.closest('.tab');
-      if (!btn) return;
+      if (!btn || capturing) return;
       setMode(btn.dataset.mode);
     });
 
     shutterBtn.addEventListener('click', () => {
-      if (mode === 'longexposure') startLongExposure();
+      if (mode === 'filter') {
+        captureFilterSnapshot();
+      } else if (mode === 'longexposure') {
+        startLongExposure();
+      }
     });
 
     let resizeTimer = null;
@@ -661,8 +1549,7 @@
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         resizeCanvas();
-        if (mode === 'sensor') startSensorMode();
-      }, 120);
+      }, 100);
     }
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);

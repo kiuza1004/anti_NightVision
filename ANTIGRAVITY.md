@@ -1,54 +1,45 @@
 # ANTIGRAVITY.md
 
-이 문서는 Antigravity 환경에서 Night Vision 코드베이스를 분석하고 수정할 때 필요한 아키텍처 규칙과 개발 가이드를 정의합니다.
+이 문서는 Antigravity 환경에서 ARGON NV (Night Vision) 코드베이스를 분석하고 유지보수할 때 준수해야 할 아키텍처 명세입니다.
 
 ---
 
-## 1. 프로젝트 구조
+## 1. 아키텍처 핵심 원칙
 
-- **단일 파일 아키텍처**: 모든 프론트엔드 코드(HTML, CSS, JavaScript)는 [`index.html`](file:///D:/AI_Antigravity/NightVision/index.html) 단일 파일에 위치합니다.
-- **무의존성(Zero-Dependency)**: 외부 패키지 매니저(npm, yarn), 번들러(webpack, vite), 외부 CDN 라이브러리를 사용하지 않고 순수 웹 표준 API로만 유지합니다.
-- **국문 UI 유지**: UI 텍스트 및 에러 메시지는 일관된 한국어 톤을 유지합니다.
+- **단일 파일 무의존성 구조**: 모든 HTML, CSS, JavaScript는 [`index.html`](file:///D:/AI_Antigravity/NightVision/index.html) 단일 파일에 위치하며, 외부 라이브러리나 빌드 도구를 일절 사용하지 않습니다.
+- **Zero-Allocation 핫패스**: 매 프레임 실행되는 [`renderFilter`](file:///D:/AI_Antigravity/NightVision/index.html#L653-L735) 루프 내부에서는 객체 생성을 금지하고 사전 할당된 `Float32Array`(`dnrBuffer`), `Uint32Array`(`histBins`), `Uint8Array`(`thermalLUT`) 및 비트 연산(`| 0`)만을 사용합니다.
 
 ---
 
-## 2. 렌더링 파이프라인 및 핵심 제약사항
+## 2. 광학 처리 파이프라인 (ISP Pipeline)
 
-### 2.1 Reinhard Soft-Knee Tone-Mapping (필터 모드)
+### 2.1 Reinhard Soft-Knee Tone-Mapping & Temporal DNR
 ```javascript
-const lum = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
 const raw = lum * pixelGain + offset;
-const boost = (255 * raw) / (raw + knee);
+let boost = (255 * raw) / (raw + knee);
+
+if (dnrActive) {
+  const prev = dnrBuffer[p];
+  boost = prev === 0 ? boost : (prev * dnrAlpha + boost * (1 - dnrAlpha));
+  dnrBuffer[p] = boost;
+}
 ```
 > [!CAUTION]
 > **과도한 밝기 중복 증폭(Stacked Brightness Boost) 금지**  
-> `ctx.filter = brightness(...)`와 픽셀 곱연산, 그리고 카메라 `exposureCompensation = max`를 동시에 적용하면 화면이 완전히 하얗게 날아가는 화이트아웃 현상이 발생합니다.  
-> 반드시 **카메라 기본 노출 유지 + 단일 소프트웨어 게인 + Reinhard 톤매핑** 구조를 유지하십시오.
+> 카메라 하드웨어 `exposureCompensation`을 강제로 최대치로 올리거나 `ctx.filter = brightness(...)`를 픽셀 루프와 중첩하면 정상 조도에서 화이트아웃이 발생합니다. 밝기 증폭은 반드시 소프트웨어 게인(`gain`)과 Reinhard 소프트-니 톤매핑으로만 제어합니다.
 
-### 2.2 장노출 모드 (Long Exposure)
-- `Float32Array(w * h * 3)` 정밀 누적 버퍼를 사용하여 정밀도 손실 없이 프레임을 합성합니다.
-- `lxMode === 'max'`: 각 픽셀 채널의 최댓값을 취해 점광원 및 별빛 포착.
-- `lxMode === 'avg'`: 프레임 누적합을 총 프레임 수로 나누어 야간 센서 노이즈 대폭 경감.
-- 촬영 중 프레임 드랍을 막기 위해 오프스크린 캔버스에 `willReadFrequently: true` 옵션을 적용합니다.
+### 2.2 4종 컬러 팔레트 및 사전 계산 LUT
+- `green` (P43), `white` (P45), `amber` (전술 앰버)는 단일 곱연산 및 비트 절삭으로 처리합니다.
+- `thermal` (열화상 의사 컬러)은 초기화 시 생성된 256×3 크기의 [`thermalLUT`](file:///D:/AI_Antigravity/NightVision/index.html#L448-L473) 배열을 O(1) 인덱싱으로 참조하여 프레임 드랍 없이 렌더링합니다.
 
-### 2.3 WebXR 센서 모드
-- 현재 WebXR 기기의 `immersive-ar` 세션 생성 및 `depth-sensing` 지원 여부를 안전하게 감지하고 피드백을 전달합니다.
-- 미지원 환경(예: iOS Safari 또는 구형 안드로이드 기기)에서도 에러가 전파되지 않도록 우아하게 예외를 처리합니다.
+### 2.3 프로그레시브 장노출 합성 ([`startLongExposure`](file:///D:/AI_Antigravity/NightVision/index.html#L783-L869))
+- `1.5s`, `3.0s`, `5.0s` 동안 `Float32Array(w * h * 3)` 버퍼에 프레임을 누적하면서 매 프레임 합성 과정을 메인 캔버스에 실시간으로 렌더링합니다.
+- 지원 합성 모드: `max` (최댓값 합성), `avg` (평균 노이즈 억제), `hdr` (누적 평균 + Reinhard 소프트-니 톤매핑).
 
 ---
 
-## 3. 라이프사이클 및 브라우저 호환성 규칙
+## 3. 수명 주기 및 호환성
 
-1. **자동재생 정책(Autoplay Policy) 방어**: 모바일 저전력 모드나 정책으로 인해 비디오 자동재생이 차단될 경우, 터치 시작 유도 오버레이([`playFallback`](file:///D:/AI_Antigravity/NightVision/index.html))를 통해 복구합니다.
-2. **백그라운드 전환 감지**: `visibilitychange` 이벤트 수신 시 `cancelAnimationFrame`을 호출해 백그라운드 배터리 소모를 방지하고, 포그라운드 복귀 시 현재 모드 루프를 재개합니다.
-3. **핫패스 최적화**: 매 프레임 실행되는 `getImageData` 루프 내부에서는 객체 할당(GC 유발), `Math.floor` 호출을 지양하고 비트 연산(`| 0`) 및 사전 할당 버퍼를 사용합니다.
-
----
-
-## 4. 로컬 구동 및 테스트
-
-Python 표준 라이브러리 기반 서버:
-```bash
-python serve.py 8000
-```
-웹 브라우저에서 `http://localhost:8000`에 접속하여 테스트합니다.
+- `visibilitychange` 이벤트에서 백그라운드 진입 시 즉시 `cancelAnimationFrame`을 호출하고 포그라운드 복귀 시 현재 모드의 루프를 복원합니다.
+- 캔버스 리사이즈([`resizeCanvas`](file:///D:/AI_Antigravity/NightVision/index.html#L556-L566)) 발생 시 픽셀 수가 변경되므로 `dnrBuffer = null`로 초기화하여 다음 프레임에 새 해상도에 맞게 재할당되도록 보장합니다.
